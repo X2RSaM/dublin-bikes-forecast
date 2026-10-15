@@ -39,6 +39,7 @@ Both stations are mostly empty at night. The real difference is how reliably the
 ### 3. "Same as now" will be a strong baseline
 
 A station that is empty at 1 a.m. is almost always still empty at 1:30 a.m. Predicting "no change" will therefore score well overall, especially at night. The model will be **evaluated hour by hour**, with a focus on rush hours (7–9 a.m. and 4–7 p.m.), when stations change fastest and simple guesses fail.
+
 ## Results
 
 Predicting bikes at each station 30 minutes ahead. Trained on Jul 2025–Feb 2026, validated on Mar 2026, tested on Apr–Jun 2026 (about 1 million unseen predictions).
