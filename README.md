@@ -39,6 +39,25 @@ Both stations are mostly empty at night. The real difference is how reliably the
 ### 3. "Same as now" will be a strong baseline
 
 A station that is empty at 1 a.m. is almost always still empty at 1:30 a.m. Predicting "no change" will therefore score well overall, especially at night. The model will be **evaluated hour by hour**, with a focus on rush hours (7–9 a.m. and 4–7 p.m.), when stations change fastest and simple guesses fail.
+## Results
+
+Predicting bikes at each station 30 minutes ahead. Trained on Jul 2025–Feb 2026, validated on Mar 2026, tested on Apr–Jun 2026 (about 1 million unseen predictions).
+
+| Method | Mean error (bikes) |
+|---|---|
+| Same as now | 1.06 |
+| Historical average (station, weekday, hour) | 5.11 |
+| Now + typical change for this station and hour | 1.03 |
+| **LightGBM** | **0.97** |
+
+![Prediction error by hour](images/model_error_by_hour.png)
+
+- LightGBM beats every baseline overall and at every hour of the day.
+- At the 8 a.m. peak, error falls from 3.24 bikes (same as now) to 2.35 (27% lower). Most of that gain comes from knowing which way each station usually moves at that hour.
+- The historical average is far worse because a station's count carries over from earlier in the day: knowing the usual *level* doesn't help, but knowing the usual *change* does.
+- Recent movement (change over the last 15–60 minutes) added surprisingly little, suggesting short-term station changes behave more like random arrivals than trends.
+- Empty-station alerts are not yet improved over the baseline (78% precision and recall); this is the next focus.
+
 
 ## Architecture
 
