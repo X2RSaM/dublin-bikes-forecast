@@ -1,0 +1,18 @@
+{
+  "threshold": 0.40844464715492773,
+  "features": [
+    "station_id",
+    "bikes_now",
+    "empty_now",
+    "capacity",
+    "fill_ratio",
+    "change_last_15min",
+    "change_last_30min",
+    "change_last_60min",
+    "hour",
+    "minute",
+    "dayofweek",
+    "typical_change",
+    "typical_empty_rate"
+  ]
+}

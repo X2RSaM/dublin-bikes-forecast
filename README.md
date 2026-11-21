@@ -51,6 +51,22 @@ Predicting bikes at each station 30 minutes ahead. Trained on Jul 2025–Feb 202
 | Now + typical change for this station and hour | 1.03 |
 | **LightGBM** | **0.97** |
 
+## Empty-station alerts
+
+A second LightGBM model predicts the probability that a station will have **zero bikes in 30 minutes**.
+
+![Precision–recall curve for empty-station alerts](images/empty_alert_pr.png)
+
+| Method | Precision | Recall |
+|---|---|---|
+| Same as now | 78% | 78% |
+| LightGBM classifier (threshold 0.41, chosen on March data) | 77% | 80% |
+
+- Overall the classifier roughly matches the baseline, because most empty stations are already empty and easy to predict.
+- The difference is **early warnings**. In the test months, stations with bikes ran out within 30 minutes 23,657 times. "Same as now" can never warn about these; the classifier warned about **22%** of them.
+- Early warnings were correct **46%** of the time, compared with a base rate of **2.6%**: about 18× better than chance, but still less than half right. The dashboard will therefore show these as a *risk level*, not a certainty.
+- The threshold controls the trade-off: at 0.3 the model catches 40% of stations about to run out (39% of warnings correct); at 0.6 it catches 3% (57% correct).
+
 ![Prediction error by hour](images/model_error_by_hour.png)
 
 - LightGBM beats every baseline overall and at every hour of the day.
@@ -107,10 +123,13 @@ To run the automated collection on your own fork, add your key as a repository s
 
 - [x] Automated live data collection with GitHub Actions
 - [x] Exploratory analysis of historical data
-- [ ] Download and combine 12 months of history
-- [ ] Baselines: "same as now" and historical average by station, weekday and hour
-- [ ] LightGBM forecasting model with experiment tracking (MLflow)
-- [ ] Hour-by-hour evaluation, focused on rush hours
+- [x] Download and combine 12 months of history
+- [x] Baselines: "same as now", historical average, and "now + typical change"
+- [x] LightGBM forecasting model (beats all baselines)
+- [x] Hour-by-hour evaluation, focused on rush hours
+- [x] Empty-station alert classifier with probability output
+- [ ] Experiment tracking with MLflow
+- [ ] Weather features and 60-minute forecasts
 - [ ] Prediction API (FastAPI + Docker)
 - [ ] Interactive map dashboard (Streamlit), deployed online
 - [ ] Data drift monitoring and automated retraining
