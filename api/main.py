@@ -49,6 +49,7 @@ THRESHOLD = empty_meta["threshold"]
 # ---- Live data kept in memory ------------------------------------------------
 history = pd.DataFrame(columns=["time", "station_id", "bikes"])
 stations = {}  # station_id -> name, address, lat, lon, capacity, open
+last_fetch = None  # when we last called JCDecaux
 
 
 def fetch_snapshot():
@@ -70,17 +71,30 @@ def fetch_snapshot():
     return pd.DataFrame(rows)
 
 
+def refresh():
+    """Fetch a new snapshot and add it to the in-memory history."""
+    global history, last_fetch
+    try:
+        snap = fetch_snapshot()
+        history = pd.concat([history, snap], ignore_index=True)
+        cutoff = pd.Timestamp.now(tz="UTC") - KEEP_HISTORY
+        history = history[history["time"] >= cutoff].drop_duplicates()
+        last_fetch = pd.Timestamp.now(tz="UTC")
+        print(f"Fetched {len(snap)} stations; {len(history)} readings in memory")
+    except Exception as exc:  # keep running even if one fetch fails
+        print(f"Fetch failed: {type(exc).__name__}")
+
+
+def refresh_if_stale():
+    """On cloud platforms the background task may be paused between requests,
+    so each request also fetches fresh data if the last fetch is too old."""
+    if last_fetch is None or pd.Timestamp.now(tz="UTC") - last_fetch > pd.Timedelta(seconds=POLL_SECONDS):
+        refresh()
+
+
 async def poll_forever():
-    global history
     while True:
-        try:
-            snap = await asyncio.to_thread(fetch_snapshot)
-            history = pd.concat([history, snap], ignore_index=True)
-            cutoff = pd.Timestamp.now(tz="UTC") - KEEP_HISTORY
-            history = history[history["time"] >= cutoff].drop_duplicates()
-            print(f"Fetched {len(snap)} stations; {len(history)} readings in memory")
-        except Exception as exc:  # keep running even if one fetch fails
-            print(f"Fetch failed: {type(exc).__name__}")
+        await asyncio.to_thread(refresh)
         await asyncio.sleep(POLL_SECONDS)
 
 
@@ -97,6 +111,7 @@ app = FastAPI(title="Dublin Bikes Forecast API",
 
 
 def predict_all():
+    refresh_if_stale()
     if history.empty:
         raise HTTPException(503, "Collecting live data, try again in a minute.")
 

@@ -130,7 +130,8 @@ To run the automated collection on your own fork, add your key as a repository s
 - [x] Empty-station alert classifier with probability output
 - [ ] Experiment tracking with MLflow
 - [ ] Weather features and 60-minute forecasts
-- [ ] Prediction API (FastAPI + Docker)
+- [x] Prediction API (FastAPI)
+- [x] Package the API with Docker
 - [ ] Interactive map dashboard (Streamlit), deployed online
 - [ ] Data drift monitoring and automated retraining
 
