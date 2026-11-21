@@ -2,9 +2,13 @@
 
 **Predicting how many bikes a Dublin Bikes station will have in 30 minutes, and the risk that it runs out, using live data collected automatically every 15 minutes.**
 
-**Live API:** [https://dublin-bikes-api-683472226763.europe-west1.run.app/docs](https://dublin-bikes-api-683472226763.europe-west1.run.app/docs) (the first request after a quiet period takes a few seconds while the server starts)
+### 👉 [Try the live dashboard](https://dublin-bikes-forecast.streamlit.app)
 
-> 🚧 **Work in progress.** The data pipeline, both models and the prediction API are live. The map dashboard and automated retraining are in development (see [Roadmap](#roadmap)).
+**Live dashboard:** [dublin-bikes-forecast.streamlit.app](https://dublin-bikes-forecast.streamlit.app) · **Prediction API:** [API docs](https://dublin-bikes-api-683472226763.europe-west1.run.app/docs)
+
+The first load after a quiet period can take up to a minute while the servers wake up.
+
+> The data pipeline, both models, the prediction API and the dashboard are live. Next up: experiment tracking, weather features and automated retraining (see [Roadmap](#roadmap)).
 
 ---
 
@@ -20,10 +24,11 @@ Live apps show how many bikes a station has *right now*. This project predicts h
 - **Exploratory analysis:** 12 months of historical station data (July 2025 to June 2026, 7.1 million readings from 115 stations) cleaned and analysed.
 - **Two LightGBM models:** one predicts the number of bikes in 30 minutes; the other predicts the probability that a station will be empty.
 - **Prediction API:** a FastAPI service, packaged with Docker and deployed on Google Cloud Run, serves both models with live data.
+- **Live dashboard:** a Streamlit map of every station, coloured by the risk of having no bikes in 30 minutes, deployed on Streamlit Community Cloud.
 
 ## Architecture
 
-![System architecture: data flows from the JCDecaux and Open-Meteo APIs through a scheduled collector into a data store; 12 months of history feed features and models, which are served by a prediction API on Google Cloud Run](images/architecture.png)
+![System architecture: data flows from the JCDecaux and Open-Meteo APIs through a scheduled collector into a data store; 12 months of history feed features and models, which are served by a prediction API on Google Cloud Run and shown on a Streamlit dashboard](images/architecture.png)
 
 Green lines show components that are built and running; grey dashed lines show planned components.
 
@@ -112,6 +117,20 @@ Example response:
 
 The service is packaged with Docker and deployed on **Google Cloud Run** (europe-west1), which scales to zero when idle to stay within the free tier.
 
+## Dashboard
+
+**[dublin-bikes-forecast.streamlit.app](https://dublin-bikes-forecast.streamlit.app)**
+
+A Streamlit app built on top of the prediction API. It holds no models itself: it calls the API, so the front end and back end can change independently.
+
+- A live map of every station, coloured red, amber or green by the risk of having no bikes in 30 minutes
+- Headline numbers: stations reporting, bikes available, stations empty now, stations at high risk
+- A station picker that zooms the map to one station and shows its current bikes, expected bikes in 30 minutes and chance of being empty
+- A table of the stations most likely to run out
+- A short, honest note on how accurate the predictions are
+
+The layout adapts to phones, tablets and laptops.
+
 ## Project structure
 
 ```
@@ -120,6 +139,9 @@ dublin-bikes-forecast/
 │   └── collect.yml            # scheduled data collection (every 15 min)
 ├── api/
 │   └── main.py                # FastAPI prediction service
+├── dashboard/
+│   ├── app.py                 # Streamlit map dashboard
+│   └── requirements.txt       # only what the dashboard needs
 ├── data/
 │   ├── raw/                   # live snapshots collected by the workflow
 │   └── historical/            # monthly history files (downloaded locally, not committed)
@@ -171,6 +193,15 @@ python src/download_history.py
 uvicorn api.main:app --reload
 ```
 
+**Run the dashboard locally** (it uses the live API, so no key is needed), then open http://localhost:8501:
+
+```bash
+pip install streamlit pydeck
+streamlit run dashboard/app.py
+```
+
+To point it at your own API, set `API_URL` first, for example `export API_URL=http://127.0.0.1:8000`.
+
 **Run the API with Docker:**
 
 ```bash
@@ -198,7 +229,7 @@ To run the automated collection on your own fork, add your key as a repository s
 - [x] Hour-by-hour evaluation, focused on rush hours
 - [x] Empty-station alert classifier with probability output
 - [x] Prediction API (FastAPI + Docker), deployed on Google Cloud Run
-- [ ] Interactive map dashboard (Streamlit), deployed online
+- [x] Interactive map dashboard (Streamlit), deployed online
 - [ ] Experiment tracking with MLflow
 - [ ] Weather features and 60-minute forecasts
 - [ ] Data drift monitoring and automated retraining
