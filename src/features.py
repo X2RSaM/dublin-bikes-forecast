@@ -58,3 +58,41 @@ def build_table(grid, capacity, horizon_slots=2):
     df["fill_ratio"] = df["bikes_now"] / df["capacity"]
     df["change"] = df["bikes_future"] - df["bikes_now"]
     return df
+
+
+def build_live_features(records, capacity, usual, now=None, horizon_slots=2, max_fill=2):
+    """Features for live predictions, built the same way as in training.
+
+    records  - recent readings: columns time (UTC), station_id, bikes
+    capacity - docks per station (Series indexed by station_id)
+    usual    - typical_change / typical_empty_rate per station, weekday, hour (from training)
+    Returns one row per station for the current 15-minute slot (no target column).
+    """
+    now = pd.Timestamp.now(tz="UTC") if now is None else now
+    now_slot = now.floor(f"{SLOT_MINUTES}min")
+
+    rec = records.assign(slot=records["time"].dt.floor(f"{SLOT_MINUTES}min"))
+    grid = rec.pivot_table(index="slot", columns="station_id", values="bikes", aggfunc="last")
+    window = pd.date_range(now_slot - pd.Timedelta(minutes=SLOT_MINUTES * 6), now_slot,
+                           freq=f"{SLOT_MINUTES}min")
+    grid = grid.reindex(window).ffill(limit=max_fill)
+
+    latest = grid.iloc[-1]
+    out = pd.DataFrame({"station_id": latest.index, "bikes_now": latest.to_numpy()})
+    for slots in (1, 2, 4):
+        out[f"change_last_{slots * SLOT_MINUTES}min"] = latest.to_numpy() - grid.iloc[-1 - slots].to_numpy()
+    out = out.dropna(subset=["bikes_now"]).reset_index(drop=True)
+
+    t = (now_slot + pd.Timedelta(minutes=SLOT_MINUTES * horizon_slots)).tz_convert("Europe/Dublin")
+    out["hour"] = t.hour
+    out["minute"] = t.minute
+    out["dayofweek"] = t.dayofweek
+
+    out["capacity"] = out["station_id"].map(capacity)
+    out["fill_ratio"] = out["bikes_now"] / out["capacity"]
+    out["empty_now"] = (out["bikes_now"] == 0).astype(int)
+
+    out = out.merge(usual, on=["station_id", "dayofweek", "hour"], how="left")
+    out["typical_change"] = out["typical_change"].fillna(0)
+    out["typical_empty_rate"] = out["typical_empty_rate"].fillna(usual["typical_empty_rate"].mean())
+    return out

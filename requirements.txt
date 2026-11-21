@@ -4,3 +4,5 @@ pyarrow
 matplotlib
 lightgbm
 scikit-learn
+fastapi
+uvicorn[standard]
